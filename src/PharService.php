@@ -215,9 +215,18 @@ class PharService
     public function outputResources(): bool
     {
         $skipLen = \strlen($this->baseDir);
-        foreach ($this->resourceFilesProvider() as $srcFileName)
+        foreach ($this->resourceFilesProvider() as $key => $value)
         {
-            $destFileName = $this->outputDir . \DIRECTORY_SEPARATOR . substr($srcFileName, $skipLen);
+            if (\is_int($key))
+            {
+                $srcFileName = $value;
+                $destFileName = $this->outputDir . \DIRECTORY_SEPARATOR . substr($srcFileName, $skipLen);
+            }
+            else
+            {
+                $srcFileName = $key;
+                $destFileName = $this->outputDir . \DIRECTORY_SEPARATOR . $value;
+            }
             $destDir = \dirname($destFileName);
             if (!is_dir($destDir) && !mkdir($destDir, 0755, true))
             {
@@ -546,35 +555,47 @@ class PharService
 
     protected function resourceFilesProvider(): \Generator
     {
-        $finder = (new Finder())
-                ->in(array_map(fn ($dir) => $this->baseDir . \DIRECTORY_SEPARATOR . $dir, $this->resourceDirs));
-
-        $finder->files();
-
-        $this->setBaseFilter($finder);
-
-        if ($this->resourceExcludeDirs)
+        if ($this->resourceDirs)
         {
-            $finder->exclude($this->resourceExcludeDirs);
+            $finder = (new Finder())
+            ->in(array_map(fn ($dir) => $this->baseDir . \DIRECTORY_SEPARATOR . $dir, $this->resourceDirs));
+
+            $finder->files();
+
+            $this->setBaseFilter($finder);
+
+            if ($this->resourceExcludeDirs)
+            {
+                $finder->exclude($this->resourceExcludeDirs);
+            }
+            if ($this->resourceExcludeFiles)
+            {
+                $finder->notName($this->resourceExcludeFiles);
+            }
+
+            foreach ($finder as $filename => $_)
+            {
+                yield $filename;
+            }
         }
-        if ($this->resourceExcludeFiles)
-        {
-            $finder->notName($this->resourceExcludeFiles);
-        }
 
-        foreach ($finder as $filename => $_)
+        foreach ($this->resourceFiles as $key => $value)
         {
-            yield $filename;
-        }
-
-        foreach ($this->resourceFiles as $file)
-        {
-            $filename = $this->baseDir . \DIRECTORY_SEPARATOR . $file;
-            if (!is_file($filename))
+            if (\is_int($key))
+            {
+                $srcFile = $value;
+            }
+            else
+            {
+                $srcFile = $key;
+            }
+            $destFile = $value;
+            $srcFilename = $this->baseDir . \DIRECTORY_SEPARATOR . $srcFile;
+            if (!is_file($srcFilename))
             {
                 continue;
             }
-            yield $filename;
+            yield $srcFilename => $destFile;
         }
     }
 }
